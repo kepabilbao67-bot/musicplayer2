@@ -46,3 +46,18 @@ Pensada para aprender a mezclar música como hobby. Todo el código está en un 
 ---
 
 Hecho con la ayuda de Kiro. ¡Disfruta aprendiendo a pinchar! 🎶
+
+
+## 📱 Versión para Android (APK)
+
+Este proyecto puede generar una app `.apk` para móvil Android **automáticamente**, sin instalar nada en tu ordenador.
+
+Cómo conseguir el APK:
+
+1. Ve a la pestaña **Actions** del repositorio y abre el flujo **"Construir APK"** (o se ejecuta solo al actualizar `index.html` en `main`).
+2. Cuando termine (sale un ✅ verde), tienes el APK de dos formas:
+   - En la sección **Releases** del repo, en la versión **"NEON DJ - APK para Android"**.
+   - O dentro del propio run de Actions, en **Artifacts → NEON-DJ-apk**.
+3. Descarga `NEON-DJ.apk`, ábrelo en el móvil y permite la instalación de orígenes desconocidos si lo pide.
+
+> Es un APK de depuración (debug), perfecto para uso personal. La carpeta `apk-build/` contiene el proyecto Cordova que usa el flujo de GitHub Actions.

@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.kepabilbao.neondj" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>NEON DJ</name>
+    <description>Mesa de mezclas para aprender a pinchar música.</description>
+    <author email="dev@example.com" href="https://github.com/kepabilbao67-bot/musicplayer2">kepabilbao67-bot</author>
+    <content src="index.html" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="Orientation" value="landscape" />
+    <preference name="Fullscreen" value="false" />
+    <preference name="BackgroundColor" value="0xff06070b" />
+    <platform name="android">
+        <preference name="android-minSdkVersion" value="24" />
+        <preference name="AndroidWindowSplashScreenBackground" value="#06070b" />
+    </platform>
+</widget>
