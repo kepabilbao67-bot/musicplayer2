@@ -162,6 +162,16 @@
   .tbtn.loop.on { background: var(--accent); color: #160a26; border-color: var(--accent); }
   .tbtn.sync.on { background: #ffb02e; color: #2a1a00; border-color: #ffb02e; }
 
+  /* ---- hot cues ---- */
+  .hotcues { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .hcue {
+    background: #20283a; color: #aeb8cf; border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 0; font-size: 12px; font-weight: 700; cursor: pointer; transition: .1s;
+  }
+  .hcue:hover { background: #2a3346; }
+  .hcue:active { transform: scale(.95); }
+  .hcue.set { background: #16324f; border-color: #3b82f6; color: #9ec5ff; }
+
   /* ---- knobs (EQ y filtro) ---- */
   .knobs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
   .knob-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -275,6 +285,12 @@
         <button class="tbtn sync" data-role="sync" disabled>SYNC</button>
       </div>
 
+      <div class="hotcues">
+        <button class="hcue" data-hot="0">HOT 1</button>
+        <button class="hcue" data-hot="1">HOT 2</button>
+        <button class="hcue" data-hot="2">HOT 3</button>
+      </div>
+
       <div class="knobs">
         <div class="knob-cell"><div class="knob" data-knob="high"><div class="ind"></div></div><div class="kval" data-role="high-val">0</div><div class="kname">AGUDOS</div></div>
         <div class="knob-cell"><div class="knob" data-knob="mid"><div class="ind"></div></div><div class="kval" data-role="mid-val">0</div><div class="kname">MEDIOS</div></div>
@@ -335,6 +351,12 @@
         <button class="tbtn sync" data-role="sync" disabled>SYNC</button>
       </div>
 
+      <div class="hotcues">
+        <button class="hcue" data-hot="0">HOT 1</button>
+        <button class="hcue" data-hot="1">HOT 2</button>
+        <button class="hcue" data-hot="2">HOT 3</button>
+      </div>
+
       <div class="knobs">
         <div class="knob-cell"><div class="knob" data-knob="high"><div class="ind"></div></div><div class="kval" data-role="high-val">0</div><div class="kname">AGUDOS</div></div>
         <div class="knob-cell"><div class="knob" data-knob="mid"><div class="ind"></div></div><div class="kval" data-role="mid-val">0</div><div class="kname">MEDIOS</div></div>
@@ -360,13 +382,16 @@
     Elige una pista del desplegable de cada deck (ya vienen <b>4 ritmos originales</b>) o carga tu propia canción con 📁.
     Dale <kbd>PLAY</kbd> a una y empieza a sonar. Mueve el <b>CROSSFADER</b> del centro hacia la otra para mezclar.
     Usa los <b>knobs</b> de EQ (gira con el ratón arriba/abajo) para quitar graves o agudos al mezclar, <b>FILTRO</b> para barridos, <b>ECO</b> para delay y <b>REVERB</b> para dar ambiente.
-    <kbd>SYNC</kbd> iguala el BPM de un deck al otro. <kbd>LOOP 4</kbd> repite 4 tiempos. Doble clic en un knob = reset.
+    <kbd>SYNC</kbd> iguala el BPM <b>y cuadra el compás</b> con el otro deck automáticamente. <kbd>LOOP 4</kbd> repite 4 tiempos. Doble clic en un knob = reset.
+    <br><br>
+    <b>Scratch / Jog:</b> arrastra el <b>vinilo</b> con el ratón para rascar o buscar un punto.
+    <b>Hot cues:</b> los 3 botones <kbd>HOT</kbd> guardan un punto al primer clic y saltan a él en los siguientes.
     <br><br>
     <b>Atajos de teclado</b> — Deck A: <kbd>Q</kbd> play · <kbd>A</kbd> cue · <kbd>Z</kbd> loop · <kbd>S</kbd> sync &nbsp;|&nbsp;
     Deck B: <kbd>P</kbd> play · <kbd>L</kbd> cue · <kbd>M</kbd> loop · <kbd>K</kbd> sync &nbsp;|&nbsp;
     <kbd>←</kbd>/<kbd>→</kbd> mover crossfader.
     <br><br>
-    <b>Grabar:</b> pulsa <kbd>● REC</kbd> arriba para grabar tu mezcla y <kbd>■ STOP</kbd> para descargarla como archivo de audio.
+    <b>Grabar:</b> pulsa <kbd>● REC</kbd> arriba para grabar tu mezcla y <kbd>■ STOP</kbd> para descargarla como archivo <b>WAV</b> (se abre en cualquier sitio).
     Ahora hay <b>8 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap y Funk.
     <br><br>
     <b>FX</b> (barra inferior): <kbd>1</kbd> Riser · <kbd>2</kbd> Airhorn · <kbd>3</kbd> Impact · <kbd>4</kbd> Zap. Úsalos en las transiciones para darle chispa a la mezcla.
@@ -519,6 +544,27 @@ function getReverbIR(ctx){
     for(let i=0;i<len;i++){ d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.5); }
   }
   _reverbIR = ir; return ir;
+}
+
+/* Codifica audio PCM (estéreo) en un archivo WAV de 16 bits, reproducible en cualquier sitio */
+function encodeWAV(chunksL, chunksR, sampleRate){
+  let total=0; chunksL.forEach(c=>total+=c.length);
+  const L=new Float32Array(total), R=new Float32Array(total);
+  let o=0; for(let i=0;i<chunksL.length;i++){ L.set(chunksL[i],o); R.set(chunksR[i],o); o+=chunksL[i].length; }
+  const numCh=2, bytes=2, dataLen=total*numCh*bytes;
+  const buf=new ArrayBuffer(44+dataLen), view=new DataView(buf);
+  const ws=(off,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(off+i,s.charCodeAt(i)); };
+  ws(0,"RIFF"); view.setUint32(4,36+dataLen,true); ws(8,"WAVE"); ws(12,"fmt ");
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,numCh,true);
+  view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*numCh*bytes,true);
+  view.setUint16(32,numCh*bytes,true); view.setUint16(34,16,true);
+  ws(36,"data"); view.setUint32(40,dataLen,true);
+  let off=44;
+  for(let i=0;i<total;i++){
+    let l=Math.max(-1,Math.min(1,L[i])); view.setInt16(off,l<0?l*0x8000:l*0x7FFF,true); off+=2;
+    let r=Math.max(-1,Math.min(1,R[i])); view.setInt16(off,r<0?r*0x8000:r*0x7FFF,true); off+=2;
+  }
+  return new Blob([view],{type:"audio/wav"});
 }
 
 /* Definición de los 4 ritmos. Cada patrón es de 16 pasos (semicorcheas) por compás.
@@ -700,6 +746,8 @@ class Deck {
     this.isPlaying=false; this.startTime=0; this.offset=0;
     this.rate=1; this.baseBPM=null;
     this.loopActive=false; this.loopStart=0; this.loopEnd=0;
+    this.hotCues=[null,null,null];   // posiciones guardadas
+    this.scrubbing=false; this._grain=null; this._lastGrain=0;
     this.el = {
       select: root.querySelector('[data-role="select"]'),
       file: root.querySelector('[data-role="file"]'),
@@ -721,6 +769,7 @@ class Deck {
       fv: root.querySelector('[data-role="filter-val"]'),
       ev: root.querySelector('[data-role="echo-val"]'),
       rv: root.querySelector('[data-role="reverb-val"]'),
+      hcues: Array.from(root.querySelectorAll('[data-hot]')),
     };
     this.cctx = this.el.canvas.getContext("2d");
     this.vinylAngle = 0;
@@ -783,6 +832,24 @@ class Deck {
       const r = this.el.canvas.getBoundingClientRect();
       this.seek(((e.clientX-r.left)/r.width) * this.buffer.duration);
     });
+    // Hot cues: 1er clic guarda la posición, siguientes clics saltan a ella
+    this.el.hcues.forEach((b,i)=> b.addEventListener("click", ()=>this.hotCue(i)));
+    // Scratch / jog: arrastra el vinilo con el ratón
+    const vin=this.el.vinyl;
+    const px=e=> (e.touches?e.touches[0].clientX:e.clientX);
+    const down=e=>{ if(!this.buffer) return; AC().resume(); this.scrubbing=true; this._scrubWasPlaying=this.isPlaying; this._scrubLastX=px(e); if(this.isPlaying) this.pause(); e.preventDefault(); };
+    const move=e=>{
+      if(!this.scrubbing) return;
+      const x=px(e), dx=x-this._scrubLastX; this._scrubLastX=x;
+      this.offset=clamp(this.offset + dx*0.004, 0, this.buffer.duration-0.05);
+      this.draw();
+      const now=performance.now();
+      if(Math.abs(dx)>0.5 && now-this._lastGrain>40){ this._lastGrain=now; this.playGrain(); }
+    };
+    const up=()=>{ if(!this.scrubbing) return; this.scrubbing=false; this.stopGrain(); if(this._scrubWasPlaying) this.play(); };
+    vin.addEventListener("mousedown",down); vin.addEventListener("touchstart",down,{passive:false});
+    window.addEventListener("mousemove",move); window.addEventListener("touchmove",move,{passive:false});
+    window.addEventListener("mouseup",up); window.addEventListener("touchend",up);
     // Knobs
     this.knobHigh = makeKnob(this.root.querySelector('[data-knob="high"]'), {min:-26,max:12,value:0,def:0,onChange:v=>{ this.eqHigh.gain.value=v; this.el.hv.textContent=Math.round(v); }});
     this.knobMid  = makeKnob(this.root.querySelector('[data-knob="mid"]'),  {min:-26,max:12,value:0,def:0,onChange:v=>{ this.eqMid.gain.value=v;  this.el.mv.textContent=Math.round(v); }});
@@ -829,6 +896,9 @@ class Deck {
     this.el.duration.textContent = formatTime(buf.duration);
     this.el.current.textContent="0:00";
     [this.el.play,this.el.cue,this.el.loop,this.el.sync].forEach(b=>b.disabled=false);
+    // resetear hot cues al cargar pista nueva
+    this.hotCues=[null,null,null];
+    this.el.hcues.forEach((b,i)=>{ b.classList.remove("set"); b.textContent="HOT "+(i+1); });
     // tiempo de eco musical: corchea con puntillo (3/4 de tiempo)
     if(this.baseBPM) this.delay.delayTime.value = clamp((60/this.baseBPM)*0.75, 0.02, 2);
     this.updateBPM(); this.draw();
@@ -868,6 +938,28 @@ class Deck {
   play(){ if(!this.buffer||this.isPlaying) return; this.startSource(); this.isPlaying=true; this.updatePlay(); }
   pause(){ if(!this.isPlaying) return; this.offset=this.position(); this.stopSource(); this.isPlaying=false; this.updatePlay(); }
   stop(){ this.stopSource(); this.isPlaying=false; this.offset=0; this.updatePlay(); }
+
+  hotCue(i){
+    if(!this.buffer) return;
+    if(this.hotCues[i]==null){
+      this.hotCues[i]=this.position();
+      this.el.hcues[i].classList.add("set");
+      this.el.hcues[i].textContent="● "+formatTime(this.hotCues[i]);
+    } else {
+      this.seek(this.hotCues[i]);
+    }
+  }
+  // grano corto para el sonido de scratch/jog
+  playGrain(){
+    if(!this.buffer) return;
+    this.stopGrain();
+    const ctx=AC(); const s=ctx.createBufferSource();
+    s.buffer=this.buffer; s.playbackRate.value=this.rate;
+    s.connect(this.eqLow);
+    try{ s.start(0, clamp(this.offset,0,this.buffer.duration-0.05)); s.stop(ctx.currentTime+0.14); }catch(e){}
+    this._grain=s;
+  }
+  stopGrain(){ if(this._grain){ try{ this._grain.stop(); }catch(e){} try{ this._grain.disconnect(); }catch(e){} this._grain=null; } }
   seek(sec){
     const was=this.isPlaying; this.stopSource(); this.isPlaying=false;
     this.offset=clamp(sec,0,this.buffer?this.buffer.duration:0);
@@ -911,6 +1003,17 @@ class Deck {
     this.el.pitchval.textContent=(pct>=0?"+":"")+pct.toFixed(1)+"%";
     if(this.source) this.source.playbackRate.value=this.rate;
     this.updateBPM();
+    // Alineación automática del beat: cuadrar el compás con el otro deck
+    if(this.isPlaying && other.isPlaying){
+      const thisBar=(60/this.baseBPM)*4, otherBar=(60/other.baseBPM)*4;
+      const phase=(other.position()%otherBar)/otherBar;        // 0..1 dentro del compás del otro
+      const pos=this.position();
+      const barIdx=Math.floor(pos/thisBar);
+      let target=barIdx*thisBar + phase*thisBar;
+      if(target>this.buffer.duration) target-=thisBar;
+      this.offset=clamp(target,0,this.buffer.duration-0.02);
+      this.stopSource(); this.startSource();
+    }
     this.el.sync.classList.add("on");
     setTimeout(()=>this.el.sync.classList.remove("on"), 600);
   }
@@ -1008,28 +1111,33 @@ async function init(){
 
   document.getElementById("master").addEventListener("input",e=>{ masterNode().gain.value=e.target.value/100; });
 
-  // Grabar la mezcla y descargarla como archivo de audio
-  let mediaRecorder=null, recChunks=[], streamDest=null;
+  // Grabar la mezcla en WAV (captura PCM del master, sin librerías externas)
+  let recording=false, recL=[], recR=[], recProc=null;
   const recBtn=document.getElementById("recBtn");
   recBtn.addEventListener("click", ()=>{
     AC().resume();
-    if(mediaRecorder && mediaRecorder.state==="recording"){ mediaRecorder.stop(); return; }
-    if(typeof MediaRecorder==="undefined"){ alert("Tu navegador no permite grabar audio. Prueba con Chrome o Edge."); return; }
-    if(!streamDest){ streamDest=AC().createMediaStreamDestination(); masterNode().connect(streamDest); }
-    recChunks=[];
-    try{ mediaRecorder=new MediaRecorder(streamDest.stream); }
-    catch(err){ alert("No se pudo iniciar la grabación en este navegador."); return; }
-    mediaRecorder.ondataavailable=ev=>{ if(ev.data.size>0) recChunks.push(ev.data); };
-    mediaRecorder.onstop=()=>{
-      const blob=new Blob(recChunks,{type:"audio/webm"});
+    if(recording){
+      recording=false;
+      const blob=encodeWAV(recL, recR, AC().sampleRate);
       const url=URL.createObjectURL(blob);
       const a=document.createElement("a");
-      a.href=url; a.download="mi-mezcla-"+Date.now()+".webm";
+      a.href=url; a.download="mi-mezcla-"+Date.now()+".wav";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1500);
       recBtn.classList.remove("on"); recBtn.textContent="● REC";
-    };
-    mediaRecorder.start();
+      return;
+    }
+    if(!recProc){
+      recProc=AC().createScriptProcessor(4096,2,2);
+      recProc.onaudioprocess=ev=>{
+        if(!recording) return;
+        recL.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+        recR.push(new Float32Array(ev.inputBuffer.getChannelData(1)));
+      };
+      const silent=AC().createGain(); silent.gain.value=0;
+      masterNode().connect(recProc); recProc.connect(silent); silent.connect(AC().destination);
+    }
+    recL=[]; recR=[]; recording=true;
     recBtn.classList.add("on"); recBtn.textContent="■ STOP";
   });
 

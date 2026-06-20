@@ -18,11 +18,12 @@ Pensada para aprender a mezclar música como hobby. Todo el código está en un 
 - 📁 También puedes **cargar tus propias canciones** (MP3, WAV...).
 - 🎚️ **EQ de 3 bandas** (graves/medios/agudos), **filtro**, **eco/delay** y **reverb** por deck.
 - 🎚️ **Crossfader**, faders de canal y volumen general.
-- ⏩ **Pitch ±50%** y **SYNC** para igualar el BPM de los dos platos.
-- 🔁 **Loop** de 4 tiempos y **CUE**.
+- ⏩ **Pitch ±50%** y **SYNC** que iguala el BPM **y cuadra el compás** automáticamente.
+- 🔁 **Loop** de 4 tiempos, **CUE** y **3 hot cues** por deck (puntos de salto).
+- 💿 **Modo scratch / jog**: arrastra el vinilo con el ratón.
 - 📊 **Onda (waveform)** con cabezal y **medidores VU** animados.
 - 💥 **Pads de efectos**: Riser, Airhorn, Impact y Zap.
-- 🎙️ **Graba tu mezcla** y descárgala como archivo de audio.
+- 🎙️ **Graba tu mezcla** y descárgala como **WAV** (reproducible en cualquier sitio).
 
 ## ⌨️ Atajos de teclado
 
