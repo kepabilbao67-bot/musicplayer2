@@ -14,9 +14,9 @@ Pensada para aprender a mezclar música como hobby. Todo el código está en un 
 ## ✨ Características
 
 - 🎛️ **Dos platos (decks)** con vinilos que giran al reproducir.
-- 🎵 **6 ritmos originales** generados por código (sin copyright): House, Hip-Hop, Techno, Synthwave, Reggaeton y Drum & Bass.
+- 🎵 **8 ritmos originales** generados por código (sin copyright): House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap y Funk.
 - 📁 También puedes **cargar tus propias canciones** (MP3, WAV...).
-- 🎚️ **EQ de 3 bandas** (graves/medios/agudos), **filtro** y **eco/delay** por deck.
+- 🎚️ **EQ de 3 bandas** (graves/medios/agudos), **filtro**, **eco/delay** y **reverb** por deck.
 - 🎚️ **Crossfader**, faders de canal y volumen general.
 - ⏩ **Pitch ±50%** y **SYNC** para igualar el BPM de los dos platos.
 - 🔁 **Loop** de 4 tiempos y **CUE**.

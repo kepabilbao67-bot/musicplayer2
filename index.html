@@ -163,18 +163,18 @@
   .tbtn.sync.on { background: #ffb02e; color: #2a1a00; border-color: #ffb02e; }
 
   /* ---- knobs (EQ y filtro) ---- */
-  .knobs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .knobs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
   .knob-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .knob {
-    width: 46px; height: 46px; border-radius: 50%; position: relative; cursor: ns-resize;
+    width: 42px; height: 42px; border-radius: 50%; position: relative; cursor: ns-resize;
     background: radial-gradient(circle at 50% 35%, #3a4459, #161b27 70%);
     border: 1px solid #39435a;
     box-shadow: 0 4px 10px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.06);
     touch-action: none;
   }
   .knob .ind {
-    position: absolute; top: 5px; left: 50%; width: 3px; height: 14px;
-    background: var(--accent); border-radius: 2px; transform-origin: 50% 18px;
+    position: absolute; top: 4px; left: 50%; width: 3px; height: 13px;
+    background: var(--accent); border-radius: 2px; transform-origin: 50% 17px;
     transform: translateX(-50%) rotate(0deg); box-shadow: 0 0 6px var(--accent);
   }
   .knob-cell .kname { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
@@ -281,6 +281,7 @@
         <div class="knob-cell"><div class="knob" data-knob="low"><div class="ind"></div></div><div class="kval" data-role="low-val">0</div><div class="kname">GRAVES</div></div>
         <div class="knob-cell"><div class="knob" data-knob="filter"><div class="ind"></div></div><div class="kval" data-role="filter-val">OFF</div><div class="kname">FILTRO</div></div>
         <div class="knob-cell"><div class="knob" data-knob="echo"><div class="ind"></div></div><div class="kval" data-role="echo-val">0</div><div class="kname">ECO</div></div>
+        <div class="knob-cell"><div class="knob" data-knob="reverb"><div class="ind"></div></div><div class="kval" data-role="reverb-val">0</div><div class="kname">REVERB</div></div>
       </div>
     </section>
 
@@ -340,6 +341,7 @@
         <div class="knob-cell"><div class="knob" data-knob="low"><div class="ind"></div></div><div class="kval" data-role="low-val">0</div><div class="kname">GRAVES</div></div>
         <div class="knob-cell"><div class="knob" data-knob="filter"><div class="ind"></div></div><div class="kval" data-role="filter-val">OFF</div><div class="kname">FILTRO</div></div>
         <div class="knob-cell"><div class="knob" data-knob="echo"><div class="ind"></div></div><div class="kval" data-role="echo-val">0</div><div class="kname">ECO</div></div>
+        <div class="knob-cell"><div class="knob" data-knob="reverb"><div class="ind"></div></div><div class="kval" data-role="reverb-val">0</div><div class="kname">REVERB</div></div>
       </div>
     </section>
 
@@ -357,7 +359,7 @@
     <b>Guía rápida:</b>
     Elige una pista del desplegable de cada deck (ya vienen <b>4 ritmos originales</b>) o carga tu propia canción con 📁.
     Dale <kbd>PLAY</kbd> a una y empieza a sonar. Mueve el <b>CROSSFADER</b> del centro hacia la otra para mezclar.
-    Usa los <b>knobs</b> de EQ (gira con el ratón arriba/abajo) para quitar graves o agudos al mezclar, <b>FILTRO</b> para barridos y <b>ECO</b> para añadir delay.
+    Usa los <b>knobs</b> de EQ (gira con el ratón arriba/abajo) para quitar graves o agudos al mezclar, <b>FILTRO</b> para barridos, <b>ECO</b> para delay y <b>REVERB</b> para dar ambiente.
     <kbd>SYNC</kbd> iguala el BPM de un deck al otro. <kbd>LOOP 4</kbd> repite 4 tiempos. Doble clic en un knob = reset.
     <br><br>
     <b>Atajos de teclado</b> — Deck A: <kbd>Q</kbd> play · <kbd>A</kbd> cue · <kbd>Z</kbd> loop · <kbd>S</kbd> sync &nbsp;|&nbsp;
@@ -365,7 +367,7 @@
     <kbd>←</kbd>/<kbd>→</kbd> mover crossfader.
     <br><br>
     <b>Grabar:</b> pulsa <kbd>● REC</kbd> arriba para grabar tu mezcla y <kbd>■ STOP</kbd> para descargarla como archivo de audio.
-    Ahora hay <b>6 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton y Drum & Bass.
+    Ahora hay <b>8 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap y Funk.
     <br><br>
     <b>FX</b> (barra inferior): <kbd>1</kbd> Riser · <kbd>2</kbd> Airhorn · <kbd>3</kbd> Impact · <kbd>4</kbd> Zap. Úsalos en las transiciones para darle chispa a la mezcla.
   </div>
@@ -506,6 +508,19 @@ function fxZap(){
 }
 const FX = { riser:fxRiser, airhorn:fxAirhorn, impact:fxImpact, zap:fxZap };
 
+/* Reverb compartida: respuesta de impulso = ruido que decae (cola de sala) */
+let _reverbIR = null;
+function getReverbIR(ctx){
+  if(_reverbIR) return _reverbIR;
+  const dur = 1.8, len = Math.floor(ctx.sampleRate * dur);
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for(let ch=0; ch<2; ch++){
+    const d = ir.getChannelData(ch);
+    for(let i=0;i<len;i++){ d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.5); }
+  }
+  _reverbIR = ir; return ir;
+}
+
 /* Definición de los 4 ritmos. Cada patrón es de 16 pasos (semicorcheas) por compás.
    bass/lead: listas de [paso, nota MIDI, duración en pasos] por compás. */
 const TRACKS = {
@@ -572,6 +587,26 @@ const TRACKS = {
       if(step16===0) synthBass(ctx, master, t, midiToFreq(root), 0.9);
       if(step16===6 || step16===11) synthBass(ctx, master, t, midiToFreq(root+12), 0.2);
       if(step16===0 && bar%4===3){ [root+24,root+28,root+31].forEach(n=>synthLead(ctx,master,t,midiToFreq(n),0.4,"sawtooth",0.05)); }
+    }
+  },
+  trap: {
+    name: "Trap  ·  140 BPM", bpm: 140, bars: 8,
+    kick:[0,6,10], clap:[8], ohat:[], chat:[0,2,3,4,6,8,10,11,12,14,15],
+    bassRoots:[21,21,24,26],
+    build(ctx, master, noise, bar, step16, t){
+      const root = this.bassRoots[Math.floor(bar/2)%4];
+      if([0,6,10].includes(step16)) synthBass(ctx, master, t, midiToFreq(root), 0.55);
+      if(step16===0 && bar%2===1){ synthLead(ctx,master,t,midiToFreq(root+24),0.3,"triangle",0.06); }
+    }
+  },
+  funk: {
+    name: "Funk  ·  108 BPM", bpm: 108, bars: 8,
+    kick:[0,10], clap:[4,12], ohat:[6,14], chat:[0,2,4,6,8,10,12,14],
+    bassRoots:[28,28,33,31],
+    build(ctx, master, noise, bar, step16, t){
+      const root = this.bassRoots[Math.floor(bar/2)%4];
+      if([0,3,6,8,11,14].includes(step16)) synthBass(ctx, master, t, midiToFreq(root + (step16===6?12:0)), 0.14);
+      if(step16===4 || step16===12) synthLead(ctx,master,t,midiToFreq(root+19),0.18,"square",0.06);
     }
   }
 };
@@ -685,6 +720,7 @@ class Deck {
       lv: root.querySelector('[data-role="low-val"]'),
       fv: root.querySelector('[data-role="filter-val"]'),
       ev: root.querySelector('[data-role="echo-val"]'),
+      rv: root.querySelector('[data-role="reverb-val"]'),
     };
     this.cctx = this.el.canvas.getContext("2d");
     this.vinylAngle = 0;
@@ -716,6 +752,12 @@ class Deck {
     this.delaySend.connect(this.delay);
     this.delay.connect(this.feedback); this.feedback.connect(this.delay);
     this.delay.connect(this.crossGain);
+    // Reverb: canal -> envío -> convolver -> crossfader
+    this.reverb = ctx.createConvolver(); this.reverb.buffer = getReverbIR(ctx);
+    this.reverbSend = ctx.createGain(); this.reverbSend.gain.value = 0;
+    this.channelGain.connect(this.reverbSend);
+    this.reverbSend.connect(this.reverb);
+    this.reverb.connect(this.crossGain);
     this._vuData = new Uint8Array(this.analyser.frequencyBinCount);
   }
 
@@ -747,6 +789,7 @@ class Deck {
     this.knobLow  = makeKnob(this.root.querySelector('[data-knob="low"]'),  {min:-26,max:12,value:0,def:0,onChange:v=>{ this.eqLow.gain.value=v;  this.el.lv.textContent=Math.round(v); }});
     this.knobFilt = makeKnob(this.root.querySelector('[data-knob="filter"]'),{min:-1,max:1,value:0,def:0,onChange:v=>this.applyFilter(v)});
     this.knobEcho = makeKnob(this.root.querySelector('[data-knob="echo"]'),{min:0,max:1,value:0,def:0,onChange:v=>{ this.delaySend.gain.value=v*0.85; this.el.ev.textContent=Math.round(v*100); }});
+    this.knobRev = makeKnob(this.root.querySelector('[data-knob="reverb"]'),{min:0,max:1,value:0,def:0,onChange:v=>{ this.reverbSend.gain.value=v*0.9; this.el.rv.textContent=Math.round(v*100); }});
   }
 
   applyFilter(v){
