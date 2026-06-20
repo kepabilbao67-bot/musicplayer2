@@ -392,7 +392,7 @@
     <kbd>←</kbd>/<kbd>→</kbd> mover crossfader.
     <br><br>
     <b>Grabar:</b> pulsa <kbd>● REC</kbd> arriba para grabar tu mezcla y <kbd>■ STOP</kbd> para descargarla como archivo <b>WAV</b> (se abre en cualquier sitio).
-    Ahora hay <b>8 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap y Funk.
+    Ahora hay <b>11 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap, Funk, Rock Español 80/90, Heavy Metal 80/90 y Pop Español 80/90.
     <br><br>
     <b>FX</b> (barra inferior): <kbd>1</kbd> Riser · <kbd>2</kbd> Airhorn · <kbd>3</kbd> Impact · <kbd>4</kbd> Zap. Úsalos en las transiciones para darle chispa a la mezcla.
   </div>
@@ -484,6 +484,26 @@ function synthLead(ctx, dest, t, freq, dur, type, vol){
   g.gain.exponentialRampToValueAtTime(vol || 0.16, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.03);
+}
+/* Guitarra eléctrica con distorsión (power chord: fundamental + quinta + octava) */
+function makeDistCurve(k){
+  const n=1024, curve=new Float32Array(n);
+  for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(3+k)*x*0.4/(1+k*Math.abs(x)); }
+  return curve;
+}
+function synthChord(ctx, dest, t, rootMidi, dur, vol, drive){
+  const pre=ctx.createGain(); pre.gain.value=0.3;
+  const shaper=ctx.createWaveShaper(); shaper.curve=makeDistCurve(drive||18); shaper.oversample="2x";
+  const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=3200; lp.Q.value=1;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol||0.12, t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  pre.connect(shaper); shaper.connect(lp); lp.connect(g); g.connect(dest);
+  [0,7,12].forEach(semi=>{
+    const o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.value=midiToFreq(rootMidi+semi);
+    o.connect(pre); o.start(t); o.stop(t+dur+0.03);
+  });
 }
 
 /* ---- Efectos de DJ (one-shots) que suenan en vivo por el master ---- */
@@ -653,6 +673,39 @@ const TRACKS = {
       const root = this.bassRoots[Math.floor(bar/2)%4];
       if([0,3,6,8,11,14].includes(step16)) synthBass(ctx, master, t, midiToFreq(root + (step16===6?12:0)), 0.14);
       if(step16===4 || step16===12) synthLead(ctx,master,t,midiToFreq(root+19),0.18,"square",0.06);
+    }
+  },
+  rockesp: {
+    name: "Rock Español 80/90  ·  132 BPM", bpm: 132, bars: 8,
+    kick:[0,8], clap:[4,12], ohat:[14], chat:[0,2,4,6,8,10,12,14],
+    chords:[45,41,48,43],   // Am - F - C - G
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16===0) synthChord(ctx, master, t, ch, (60/this.bpm)*4*0.92, 0.12, 16);
+      if(step16%4===0) synthBass(ctx, master, t, midiToFreq(ch-12), 0.2);
+      if(step16===6 || step16===14) synthBass(ctx, master, t, midiToFreq(ch-12), 0.14);
+    }
+  },
+  metal: {
+    name: "Heavy Metal 80/90  ·  160 BPM", bpm: 160, bars: 8,
+    kick:[0,2,3,4,6,7,8,10,11,12,14,15], clap:[4,12], ohat:[], chat:[0,2,4,6,8,10,12,14],
+    chords:[40,40,43,38],   // E - E - G - D
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([0,2,3,4,6,7,8,10,11,12,14,15].includes(step16)) synthChord(ctx, master, t, ch, 0.1, 0.1, 26);
+      if(step16===0) synthChord(ctx, master, t, ch+12, 0.4, 0.05, 22);
+      if([0,3,6,8,11,14].includes(step16)) synthBass(ctx, master, t, midiToFreq(ch-12), 0.1);
+    }
+  },
+  popesp: {
+    name: "Pop Español 80/90  ·  118 BPM", bpm: 118, bars: 8,
+    kick:[0,4,8,12], clap:[4,12], ohat:[], chat:[2,6,10,14],
+    chords:[41,48,43,45],   // F - C - G - Am
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16%2===0) synthBass(ctx, master, t, midiToFreq(ch-12), 0.16);
+      if(step16===0){ [0,4,7].forEach(n=>synthLead(ctx,master,t,midiToFreq(ch+12+n),0.6,"sawtooth",0.05)); }
+      if(step16%4===2) synthLead(ctx, master, t, midiToFreq(ch+24), 0.18, "square", 0.06);
     }
   }
 };
