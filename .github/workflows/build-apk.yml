@@ -1,0 +1,77 @@
+name: Construir APK
+
+# Se ejecuta al actualizar la app en main, o manualmente desde la pestaña "Actions"
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'index.html'
+      - 'apk-build/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes de Android
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Instalar Cordova
+        run: npm install -g cordova@12
+
+      - name: Copiar la app más reciente
+        run: cp index.html apk-build/www/index.html
+
+      - name: Anadir la plataforma Android
+        working-directory: apk-build
+        run: cordova platform add android@13
+
+      - name: Construir el APK (debug)
+        working-directory: apk-build
+        run: cordova build android --verbose
+
+      - name: Renombrar el APK
+        run: |
+          mkdir -p dist
+          cp apk-build/platforms/android/app/build/outputs/apk/debug/app-debug.apk dist/NEON-DJ.apk
+
+      - name: Subir el APK como artefacto descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEON-DJ-apk
+          path: dist/NEON-DJ.apk
+
+      - name: Publicar el APK en Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: NEON DJ - APK para Android
+          body: |
+            APK de la mesa de mezclas NEON DJ.
+
+            Para instalarlo en tu movil Android:
+            1. Descarga el archivo NEON-DJ.apk de aqui abajo (en Assets).
+            2. Abrelo en el movil y permite "Instalar de fuentes desconocidas" si lo pide.
+            3. Abre la app y a mezclar.
+          files: dist/NEON-DJ.apk

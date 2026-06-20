@@ -1,0 +1,10 @@
+{
+  "name": "neon-dj",
+  "displayName": "NEON DJ",
+  "version": "1.0.0",
+  "description": "Mesa de mezclas NEON DJ empaquetada como app Android.",
+  "license": "MIT",
+  "devDependencies": {
+    "cordova-android": "^13.0.0"
+  }
+}
