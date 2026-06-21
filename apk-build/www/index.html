@@ -91,6 +91,7 @@
   .bpm-box .bpm { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
   .bpm-box .bpm small { font-size: 11px; color: var(--muted); font-weight: 600; }
   .beat-led { width: 10px; height: 10px; border-radius: 50%; background: #2a3142; display: inline-block; margin-left: 8px; vertical-align: middle; transition: background .04s, box-shadow .04s; }
+  .spectrum { display: block; width: 100%; max-width: 1180px; margin: 0 auto 14px; height: 46px; background: #0a0d15; border: 1px solid var(--line); border-radius: 12px; }
 
   /* ---- selector de pista ---- */
   .track-row { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -250,6 +251,8 @@
       <input type="range" class="mvol" id="master" min="0" max="100" value="85" />
     </div>
   </header>
+
+  <canvas id="spectrum" class="spectrum"></canvas>
 
   <div class="console">
 
@@ -415,11 +418,20 @@ function formatTime(s){
 
 let audioCtx = null;
 function AC(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
-let masterGain = null;
+let masterGain = null, masterLimiter = null;
 function masterNode(){
-  if(!masterGain){ masterGain = AC().createGain(); masterGain.gain.value = 0.85; masterGain.connect(AC().destination); }
+  if(!masterGain){
+    const ctx = AC();
+    masterGain = ctx.createGain(); masterGain.gain.value = 0.85;
+    // Limitador: protege la salida de saturación cuando suena todo a la vez
+    masterLimiter = ctx.createDynamicsCompressor();
+    masterLimiter.threshold.value = -3; masterLimiter.knee.value = 0;
+    masterLimiter.ratio.value = 20; masterLimiter.attack.value = 0.003; masterLimiter.release.value = 0.25;
+    masterGain.connect(masterLimiter); masterLimiter.connect(ctx.destination);
+  }
   return masterGain;
 }
+function finalNode(){ masterNode(); return masterLimiter; }
 
 /* ============================================================
    1) MOTOR DE MÚSICA ORIGINAL
@@ -1159,6 +1171,26 @@ class Deck {
    ============================================================ */
 const DEMO_BUFFERS = {};
 let deckA, deckB;
+let masterAnalyser=null, specData=null, specCanvas=null, sctx=null;
+function sizeSpectrum(){
+  if(!specCanvas) return;
+  const r=window.devicePixelRatio||1;
+  specCanvas.width=specCanvas.clientWidth*r; specCanvas.height=specCanvas.clientHeight*r;
+  sctx.setTransform(r,0,0,r,0,0);
+}
+function drawSpectrum(){
+  if(!masterAnalyser) return;
+  masterAnalyser.getByteFrequencyData(specData);
+  const w=specCanvas.clientWidth, h=specCanvas.clientHeight;
+  sctx.clearRect(0,0,w,h);
+  const bars=72, step=Math.max(1,Math.floor(specData.length*0.7/bars)), bw=w/bars;
+  for(let i=0;i<bars;i++){
+    const v=specData[i*step]/255;
+    const bh=Math.max(1, v*h);
+    sctx.fillStyle="hsl("+(285 - (i/bars)*250)+", 90%, "+(42+v*22)+"%)";
+    sctx.fillRect(i*bw+1, h-bh, bw-2, bh);
+  }
+}
 
 function buildVU(id){
   const c=document.getElementById(id);
@@ -1197,6 +1229,13 @@ async function init(){
 
   document.getElementById("master").addEventListener("input",e=>{ masterNode().gain.value=e.target.value/100; });
 
+  // Analizador de espectro del master
+  specCanvas=document.getElementById("spectrum"); sctx=specCanvas.getContext("2d");
+  masterAnalyser=AC().createAnalyser(); masterAnalyser.fftSize=512; masterAnalyser.smoothingTimeConstant=0.8;
+  finalNode().connect(masterAnalyser);
+  specData=new Uint8Array(masterAnalyser.frequencyBinCount);
+  sizeSpectrum(); window.addEventListener("resize", sizeSpectrum);
+
   // Grabar la mezcla en WAV (captura PCM del master, sin librerías externas)
   let recording=false, recL=[], recR=[], recProc=null;
   const recBtn=document.getElementById("recBtn");
@@ -1221,7 +1260,7 @@ async function init(){
         recR.push(new Float32Array(ev.inputBuffer.getChannelData(1)));
       };
       const silent=AC().createGain(); silent.gain.value=0;
-      masterNode().connect(recProc); recProc.connect(silent); silent.connect(AC().destination);
+      finalNode().connect(recProc); recProc.connect(silent); silent.connect(AC().destination);
     }
     recL=[]; recR=[]; recording=true;
     recBtn.classList.add("on"); recBtn.textContent="■ STOP";
@@ -1288,6 +1327,7 @@ function loopAnim(){
   });
   deckA.drawVU(document.getElementById("vu-a"));
   deckB.drawVU(document.getElementById("vu-b"));
+  drawSpectrum();
   requestAnimationFrame(loopAnim);
 }
 
