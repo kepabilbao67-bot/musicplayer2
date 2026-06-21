@@ -90,6 +90,7 @@
   .bpm-box { text-align: right; }
   .bpm-box .bpm { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
   .bpm-box .bpm small { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .beat-led { width: 10px; height: 10px; border-radius: 50%; background: #2a3142; display: inline-block; margin-left: 8px; vertical-align: middle; transition: background .04s, box-shadow .04s; }
 
   /* ---- selector de pista ---- */
   .track-row { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -256,7 +257,7 @@
     <section class="panel a" id="deck-a">
       <div class="deck-head">
         <div class="deck-id">DECK A</div>
-        <div class="bpm-box"><div class="bpm" data-role="bpm">--<small> BPM</small></div></div>
+        <div class="bpm-box"><div class="bpm" data-role="bpm">--<small> BPM</small></div><span class="beat-led" data-role="beatled"></span></div>
       </div>
       <div class="track-row">
         <select data-role="select"></select>
@@ -322,7 +323,7 @@
     <section class="panel b" id="deck-b">
       <div class="deck-head">
         <div class="deck-id">DECK B</div>
-        <div class="bpm-box"><div class="bpm" data-role="bpm">--<small> BPM</small></div></div>
+        <div class="bpm-box"><div class="bpm" data-role="bpm">--<small> BPM</small></div><span class="beat-led" data-role="beatled"></span></div>
       </div>
       <div class="track-row">
         <select data-role="select"></select>
@@ -392,7 +393,8 @@
     <kbd>←</kbd>/<kbd>→</kbd> mover crossfader.
     <br><br>
     <b>Grabar:</b> pulsa <kbd>● REC</kbd> arriba para grabar tu mezcla y <kbd>■ STOP</kbd> para descargarla como archivo <b>WAV</b> (se abre en cualquier sitio).
-    Ahora hay <b>11 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap, Funk, Rock Español 80/90, Heavy Metal 80/90 y Pop Español 80/90.
+    Ahora hay <b>14 estilos</b>: House, Hip-Hop, Techno, Synthwave, Reggaeton, Drum & Bass, Trap, Funk, Rock Español 80/90, Heavy Metal 80/90, Pop Español 80/90, Punk 80/90, Ska 80/90 y Grunge 90.
+    La <b>lucecita</b> junto al BPM parpadea en cada tiempo para ayudarte a cuadrar la mezcla.
     <br><br>
     <b>FX</b> (barra inferior): <kbd>1</kbd> Riser · <kbd>2</kbd> Airhorn · <kbd>3</kbd> Impact · <kbd>4</kbd> Zap. Úsalos en las transiciones para darle chispa a la mezcla.
   </div>
@@ -707,6 +709,36 @@ const TRACKS = {
       if(step16===0){ [0,4,7].forEach(n=>synthLead(ctx,master,t,midiToFreq(ch+12+n),0.6,"sawtooth",0.05)); }
       if(step16%4===2) synthLead(ctx, master, t, midiToFreq(ch+24), 0.18, "square", 0.06);
     }
+  },
+  punk: {
+    name: "Punk 80/90  ·  172 BPM", bpm: 172, bars: 8,
+    kick:[0,4,8,12], clap:[4,12], ohat:[], chat:[0,2,4,6,8,10,12,14],
+    chords:[40,45,47,45],   // E - A - B - A
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16%4===0) synthChord(ctx, master, t, ch, 0.22, 0.1, 20);
+      if(step16%2===0) synthBass(ctx, master, t, midiToFreq(ch-12), 0.14);
+    }
+  },
+  ska: {
+    name: "Ska 80/90  ·  150 BPM", bpm: 150, bars: 8,
+    kick:[0,8], clap:[4,12], ohat:[], chat:[0,4,8,12],
+    chords:[45,50,52,50],   // A - D - E - D
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([2,6,10,14].includes(step16)) synthChord(ctx, master, t, ch+12, 0.12, 0.09, 8); // "chink" a contratiempo
+      if(step16%4===0) synthBass(ctx, master, t, midiToFreq(ch-12), 0.18);
+    }
+  },
+  grunge: {
+    name: "Grunge 90  ·  115 BPM", bpm: 115, bars: 8,
+    kick:[0,8,10], clap:[4,12], ohat:[], chat:[0,4,8,12],
+    chords:[40,38,45,43],   // E - D - A - G
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16===0 || step16===8) synthChord(ctx, master, t, ch, (60/this.bpm)*2*0.9, 0.13, 24);
+      if([0,3,8,11].includes(step16)) synthBass(ctx, master, t, midiToFreq(ch-12), 0.2);
+    }
   }
 };
 
@@ -812,6 +844,7 @@ class Deck {
       current: root.querySelector('[data-role="current"]'),
       duration: root.querySelector('[data-role="duration"]'),
       bpm: root.querySelector('[data-role="bpm"]'),
+      beatled: root.querySelector('[data-role="beatled"]'),
       play: root.querySelector('[data-role="play"]'),
       cue: root.querySelector('[data-role="cue"]'),
       loop: root.querySelector('[data-role="loop"]'),
@@ -1233,6 +1266,23 @@ function loopAnim(){
   [deckA,deckB].forEach(d=>{
     if(!d) return;
     if(d.buffer){ d.el.current.textContent=formatTime(d.position()); d.draw(); }
+    // luz de beat: parpadea en cada tiempo
+    if(d.el.beatled){
+      if(d.isPlaying && d.baseBPM){
+        const beat=60/d.baseBPM, ph=(d.position()%beat)/beat;
+        if(ph<0.12){
+          const col = d.color==="a" ? "#ff3d7f" : "#21d4fd";
+          d.el.beatled.style.background = col;
+          d.el.beatled.style.boxShadow = "0 0 10px "+col;
+        } else {
+          d.el.beatled.style.background = "#2a3142";
+          d.el.beatled.style.boxShadow = "none";
+        }
+      } else {
+        d.el.beatled.style.background = "#2a3142";
+        d.el.beatled.style.boxShadow = "none";
+      }
+    }
     // girar vinilo
     if(d.isPlaying){ d.vinylAngle=(d.vinylAngle + 4*d.rate)%360; d.el.vinyl.style.transform=`rotate(${d.vinylAngle}deg)`; }
   });
