@@ -64,6 +64,20 @@
   .auto-btn { color: #b9f5d8; border-color: #2a5a45; background: #16271f; }
   .auto-btn:hover { background: #1d3329; }
   .auto-btn.on { background: var(--good); color: #06120c; border-color: var(--good); animation: recblink 1.2s infinite; }
+  .help-btn { color: #cfe3ff; border-color: #2a4566; background: #16202e; }
+  .help-btn:hover { background: #1d2c40; }
+
+  /* ---- ventana de tutorial ---- */
+  .modal { position: fixed; inset: 0; background: rgba(6,7,11,.82); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  .modal.show { display: flex; }
+  .modal-box { background: linear-gradient(160deg, var(--panel), #0f131d); border: 1px solid var(--line); border-radius: 16px; max-width: 700px; width: 100%; max-height: 86vh; overflow: auto; padding: 22px 26px; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+  .modal-box h2 { margin: 0 0 6px; font-size: 20px; background: linear-gradient(90deg, var(--a), var(--accent), var(--b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .modal-box h3 { font-size: 14px; color: var(--text); margin: 18px 0 6px; }
+  .modal-box p, .modal-box li { font-size: 13px; color: #aeb8cf; line-height: 1.6; }
+  .modal-box ol, .modal-box ul { margin: 6px 0; padding-left: 20px; }
+  .modal-box .close { float: right; background: #2a3346; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+  .modal-box .close:hover { background: #3a4361; }
+  .modal-box kbd { background: #0e121b; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--text); font-size: 12px; }
 
   .console {
     display: grid;
@@ -240,6 +254,39 @@
     <div style="font-size:12px;color:#79839a" id="loadtxt">Sintetizando ritmos</div>
   </div>
 
+  <div class="modal" id="tutorial">
+    <div class="modal-box">
+      <button class="close" id="tutClose">✕ Cerrar</button>
+      <h2>🎧 Cómo usar tu mesa de DJ</h2>
+      <p>Tienes dos "platos" (A y B). La idea es hacer sonar uno y pasar poco a poco al otro. ¡Vamos!</p>
+
+      <h3>Tu primera mezcla (paso a paso)</h3>
+      <ol>
+        <li>En el <b>Deck A</b> elige un estilo en el desplegable y pulsa <b>PLAY</b>.</li>
+        <li>En el <b>Deck B</b> elige otro estilo y pulsa <b>SYNC</b> (cuadra el ritmo con el A).</li>
+        <li>Pulsa <b>PLAY</b> en el B y mueve el <b>CROSSFADER</b> del centro poco a poco hacia la derecha. ¡Eso es mezclar!</li>
+        <li>Para practicar sin esfuerzo, prueba el botón <b>🤖 AUTO MIX</b>: mezcla solo.</li>
+      </ol>
+
+      <h3>Los controles</h3>
+      <ul>
+        <li><b>Knobs</b> (gira con el ratón): AGUDOS / MEDIOS / GRAVES (EQ), FILTRO, ECO y REVERB. Doble clic = reset.</li>
+        <li><b>PITCH</b>: acelera o frena la canción. <b>LOOP 4</b>: repite 4 tiempos. <b>CUE</b>: vuelve al inicio.</li>
+        <li><b>HOT 1/2/3</b>: el 1er clic guarda un punto; los siguientes saltan a él.</li>
+        <li>Arrastra el <b>vinilo</b> con el ratón para hacer <b>scratch</b>.</li>
+        <li><b>FX</b> (abajo): Riser, Airhorn, Impact, Zap, Flanger, Tape Stop y Echo.</li>
+        <li><b>● REC</b>: graba tu mezcla y la descarga (MP3). La <b>lucecita</b> junto al BPM marca el ritmo.</li>
+      </ul>
+
+      <h3>Atajos de teclado</h3>
+      <p>Deck A: <kbd>Q</kbd> play · <kbd>A</kbd> cue · <kbd>Z</kbd> loop · <kbd>S</kbd> sync &nbsp;|&nbsp;
+      Deck B: <kbd>P</kbd> play · <kbd>L</kbd> cue · <kbd>M</kbd> loop · <kbd>K</kbd> sync<br>
+      <kbd>←</kbd>/<kbd>→</kbd> crossfader &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>7</kbd> efectos</p>
+
+      <p style="margin-top:16px;color:#79839a">Pulsa <b>❓ AYUDA</b> arriba cuando quieras volver a ver esto.</p>
+    </div>
+  </div>
+
   <header>
     <div class="logo">
       <div class="dot"></div>
@@ -249,6 +296,7 @@
       </div>
     </div>
     <div class="master-strip">
+      <button id="helpBtn" class="rec-btn help-btn">❓ AYUDA</button>
       <button id="autoBtn" class="rec-btn auto-btn">🤖 AUTO MIX</button>
       <button id="recBtn" class="rec-btn">● REC</button>
       <div class="mlabel">Volumen general</div>
@@ -884,6 +932,26 @@ const TRACKS = {
       if(step16===0) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,5);
       if(step16===8) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,8);
     }
+  },
+  lofi: {
+    name: "Lo-Fi  ·  78 BPM", bpm: 78, bars: 8,
+    kick:[0,10], clap:[4,12], ohat:[], chat:[2,6,10,14],
+    chords:[33,40,35,38],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16===0 || step16===8) synthBass(ctx,master,t,midiToFreq(ch-12),0.3);
+      if(step16===0){ [0,3,7,10].forEach(n=>synthLead(ctx,master,t,midiToFreq(ch+12+n),0.85,"triangle",0.04)); }
+    }
+  },
+  drumstep: {
+    name: "Drumstep  ·  140 BPM", bpm: 140, bars: 8,
+    kick:[0,7,10], clap:[8], ohat:[], chat:[2,4,6,12,14],
+    bassRoots:[21,21,26,24],
+    build(ctx, master, noise, bar, step16, t){
+      const root=this.bassRoots[Math.floor(bar/2)%4];
+      if(step16===0) synthBass(ctx,master,t,midiToFreq(root),0.6);
+      if(step16===8) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,6);
+    }
   }
 };
 
@@ -1505,6 +1573,16 @@ async function init(){
   loadSettings();
   setInterval(saveSettings, 3000);
   window.addEventListener("beforeunload", saveSettings);
+
+  // Tutorial dentro de la app
+  const tutorial=document.getElementById("tutorial");
+  document.getElementById("helpBtn").addEventListener("click", ()=>tutorial.classList.add("show"));
+  document.getElementById("tutClose").addEventListener("click", ()=>tutorial.classList.remove("show"));
+  tutorial.addEventListener("click", e=>{ if(e.target===tutorial) tutorial.classList.remove("show"); });
+  // Mostrarlo automáticamente solo la primera vez
+  try{
+    if(!localStorage.getItem("neondj_seen")){ tutorial.classList.add("show"); localStorage.setItem("neondj_seen","1"); }
+  }catch(e){}
 
   document.getElementById("loading").style.display="none";
 
