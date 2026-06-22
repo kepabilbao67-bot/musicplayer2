@@ -67,6 +67,20 @@
   .help-btn { color: #cfe3ff; border-color: #2a4566; background: #16202e; }
   .help-btn:hover { background: #1d2c40; }
   .set-btn { color: #cdd6ea; }
+  .seq-open-btn { color: #ffd9a8; border-color: #5a4326; background: #2a2116; }
+  .seq-open-btn:hover { background: #33291c; }
+  .seq-bpm { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 6px 0 12px; }
+  .seq-bpm input { flex: 1; accent-color: var(--accent); }
+  .seq-grid { display: flex; flex-direction: column; gap: 6px; }
+  .seq-row { display: flex; align-items: center; gap: 6px; }
+  .seq-row .lbl { width: 58px; font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+  .seq-cells { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; flex: 1; }
+  .seq-cell { height: 26px; border-radius: 5px; background: #1b2130; border: 1px solid #2a3142; cursor: pointer; transition: .08s; }
+  .seq-cell.beat { background: #222b3d; }
+  .seq-cell.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .seq-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .seq-btn { background: #2a3346; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-weight: 700; cursor: pointer; font-size: 12px; }
+  .seq-btn:hover { background: #3a4361; }
   .txt-input { width: 100%; background: #0e121b; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
   .themes { display: flex; flex-wrap: wrap; gap: 10px; }
   .theme-swatch { width: 64px; height: 40px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #fff; font-weight: 700; padding-bottom: 3px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
@@ -259,6 +273,22 @@
     <div style="font-size:12px;color:#79839a" id="loadtxt">Sintetizando ritmos</div>
   </div>
 
+  <div class="modal" id="seq">
+    <div class="modal-box">
+      <button class="close" id="seqClose">✕ Cerrar</button>
+      <h2>🥁 Crea tu ritmo</h2>
+      <p>Pulsa las casillas para activar sonidos en cada paso (16 pasos = 1 compás). Luego cárgalo en un plato y mézclalo.</p>
+      <div class="seq-bpm">BPM <input type="range" id="seqBpm" min="70" max="180" value="120" /> <span id="seqBpmVal">120</span></div>
+      <div id="seqGrid" class="seq-grid"></div>
+      <div class="seq-actions">
+        <button id="seqPreview" class="seq-btn">▶ Probar en A</button>
+        <button id="seqToA" class="seq-btn">Cargar en Deck A</button>
+        <button id="seqToB" class="seq-btn">Cargar en Deck B</button>
+        <button id="seqClear" class="seq-btn">Borrar todo</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="settings">
     <div class="modal-box">
       <button class="close" id="setClose">✕ Cerrar</button>
@@ -303,7 +333,7 @@
       Deck B: <kbd>P</kbd> play · <kbd>L</kbd> cue · <kbd>M</kbd> loop · <kbd>K</kbd> sync<br>
       <kbd>←</kbd>/<kbd>→</kbd> crossfader &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>7</kbd> efectos</p>
 
-      <p style="margin-top:16px;color:#79839a">Pulsa <b>❓ AYUDA</b> arriba cuando quieras volver a ver esto.</p>
+      <p style="margin-top:16px;color:#79839a">Pulsa <b>❓ AYUDA</b> arriba cuando quieras volver a ver esto. Con <b>🥁 RITMO</b> puedes crear tu propio beat, y con <b>⚙️</b> poner tu nombre de DJ y el color.</p>
     </div>
   </div>
 
@@ -316,6 +346,7 @@
       </div>
     </div>
     <div class="master-strip">
+      <button id="seqBtn" class="rec-btn seq-open-btn">🥁 RITMO</button>
       <button id="setBtn" class="rec-btn set-btn">⚙️</button>
       <button id="helpBtn" class="rec-btn help-btn">❓ AYUDA</button>
       <button id="autoBtn" class="rec-btn auto-btn">🤖 AUTO MIX</button>
@@ -1032,6 +1063,24 @@ async function generateTrack(def){
   return rendered;
 }
 
+/* Convierte un patrón del secuenciador en un buffer reproducible y en bucle */
+async function renderUserBeat(bpm, pat, bars){
+  bars = bars || 4;
+  const sr=44100, beat=60/bpm, stepDur=beat/4, totalSteps=bars*16;
+  const len=Math.ceil(totalSteps*stepDur*sr);
+  const ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2, len, sr);
+  const noise=makeNoise(ctx,1.5);
+  const master=ctx.createGain(); master.gain.value=0.85; master.connect(ctx.destination);
+  for(let step=0; step<totalSteps; step++){
+    const t=step*stepDur, s=step%16;
+    if(pat.kick[s]) synthKick(ctx, master, t);
+    if(pat.snare[s]) synthClap(ctx, noise, master, t);
+    if(pat.hat[s]) synthHat(ctx, noise, master, t, false);
+    if(pat.bass[s]) synthBass(ctx, master, t, midiToFreq(33), 0.16);
+  }
+  const r=await ctx.startRendering(); r._bpm=bpm; r._loop=true; return r;
+}
+
 /* Detección sencilla de BPM para canciones cargadas por el usuario */
 function detectBPM(buffer){
   try{
@@ -1624,6 +1673,56 @@ async function init(){
   loadSettings();
   setInterval(saveSettings, 3000);
   window.addEventListener("beforeunload", saveSettings);
+
+  // Secuenciador: crea tu propio ritmo
+  const SEQ_ROWS=[{key:"kick",name:"Bombo"},{key:"snare",name:"Caja"},{key:"hat",name:"Hi-Hat"},{key:"bass",name:"Bajo"}];
+  const pattern={
+    kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+    snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],
+    bass:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]
+  };
+  let seqBPM=120;
+  const seqGrid=document.getElementById("seqGrid");
+  const seqCells={};
+  SEQ_ROWS.forEach(row=>{
+    const r=document.createElement("div"); r.className="seq-row";
+    const lbl=document.createElement("div"); lbl.className="lbl"; lbl.textContent=row.name; r.appendChild(lbl);
+    const cells=document.createElement("div"); cells.className="seq-cells";
+    seqCells[row.key]=[];
+    for(let i=0;i<16;i++){
+      const c=document.createElement("div");
+      c.className="seq-cell"+((i%4===0)?" beat":"")+(pattern[row.key][i]?" on":"");
+      c.addEventListener("click", ()=>{ pattern[row.key][i]=pattern[row.key][i]?0:1; c.classList.toggle("on"); saveBeat(); });
+      cells.appendChild(c); seqCells[row.key].push(c);
+    }
+    r.appendChild(cells); seqGrid.appendChild(r);
+  });
+  function refreshGrid(){ SEQ_ROWS.forEach(row=>seqCells[row.key].forEach((c,i)=>c.classList.toggle("on",!!pattern[row.key][i]))); }
+  function saveBeat(){ try{ localStorage.setItem("neondj_beat", JSON.stringify({bpm:seqBPM,pat:pattern})); }catch(e){} }
+  const seqBpm=document.getElementById("seqBpm"), seqBpmVal=document.getElementById("seqBpmVal");
+  seqBpm.addEventListener("input", ()=>{ seqBPM=+seqBpm.value; seqBpmVal.textContent=seqBPM; saveBeat(); });
+  async function loadBeat(deck, play){
+    const buf=await renderUserBeat(seqBPM, pattern);
+    deck.el.select.value="";
+    deck.loadBuffer(buf, "Mi Ritmo · "+seqBPM+" BPM", seqBPM);
+    if(play){ AC().resume(); deck.play(); }
+  }
+  document.getElementById("seqPreview").addEventListener("click", ()=>loadBeat(deckA, true));
+  document.getElementById("seqToA").addEventListener("click", ()=>loadBeat(deckA, false));
+  document.getElementById("seqToB").addEventListener("click", ()=>loadBeat(deckB, false));
+  document.getElementById("seqClear").addEventListener("click", ()=>{
+    SEQ_ROWS.forEach(row=>{ for(let i=0;i<16;i++) pattern[row.key][i]=0; });
+    refreshGrid(); saveBeat();
+  });
+  const seqModal=document.getElementById("seq");
+  document.getElementById("seqBtn").addEventListener("click", ()=>seqModal.classList.add("show"));
+  document.getElementById("seqClose").addEventListener("click", ()=>seqModal.classList.remove("show"));
+  seqModal.addEventListener("click", e=>{ if(e.target===seqModal) seqModal.classList.remove("show"); });
+  try{
+    const sb=JSON.parse(localStorage.getItem("neondj_beat"));
+    if(sb && sb.pat){ Object.keys(pattern).forEach(k=>{ if(sb.pat[k]) pattern[k]=sb.pat[k]; }); seqBPM=sb.bpm||120; seqBpm.value=seqBPM; seqBpmVal.textContent=seqBPM; refreshGrid(); }
+  }catch(e){}
 
   // Tutorial dentro de la app
   const tutorial=document.getElementById("tutorial");
