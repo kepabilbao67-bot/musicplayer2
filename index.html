@@ -66,6 +66,11 @@
   .auto-btn.on { background: var(--good); color: #06120c; border-color: var(--good); animation: recblink 1.2s infinite; }
   .help-btn { color: #cfe3ff; border-color: #2a4566; background: #16202e; }
   .help-btn:hover { background: #1d2c40; }
+  .set-btn { color: #cdd6ea; }
+  .txt-input { width: 100%; background: #0e121b; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+  .themes { display: flex; flex-wrap: wrap; gap: 10px; }
+  .theme-swatch { width: 64px; height: 40px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #fff; font-weight: 700; padding-bottom: 3px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .theme-swatch.sel { border-color: #fff; }
 
   /* ---- ventana de tutorial ---- */
   .modal { position: fixed; inset: 0; background: rgba(6,7,11,.82); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
@@ -254,6 +259,21 @@
     <div style="font-size:12px;color:#79839a" id="loadtxt">Sintetizando ritmos</div>
   </div>
 
+  <div class="modal" id="settings">
+    <div class="modal-box">
+      <button class="close" id="setClose">✕ Cerrar</button>
+      <h2>⚙️ Personaliza tu mesa</h2>
+
+      <h3>Tu nombre de DJ</h3>
+      <input type="text" id="djnameInput" class="txt-input" maxlength="18" placeholder="NEON DJ" />
+
+      <h3>Tema de color</h3>
+      <div class="themes" id="themes"></div>
+
+      <p style="margin-top:16px;color:#79839a">Se guarda solo: la próxima vez que abras la app seguirá igual.</p>
+    </div>
+  </div>
+
   <div class="modal" id="tutorial">
     <div class="modal-box">
       <button class="close" id="tutClose">✕ Cerrar</button>
@@ -291,11 +311,12 @@
     <div class="logo">
       <div class="dot"></div>
       <div>
-        <h1>NEON DJ</h1>
+        <h1 id="djname">NEON DJ</h1>
         <span>MESA DE MEZCLAS</span>
       </div>
     </div>
     <div class="master-strip">
+      <button id="setBtn" class="rec-btn set-btn">⚙️</button>
       <button id="helpBtn" class="rec-btn help-btn">❓ AYUDA</button>
       <button id="autoBtn" class="rec-btn auto-btn">🤖 AUTO MIX</button>
       <button id="recBtn" class="rec-btn">● REC</button>
@@ -952,6 +973,36 @@ const TRACKS = {
       if(step16===0) synthBass(ctx,master,t,midiToFreq(root),0.6);
       if(step16===8) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,6);
     }
+  },
+  afrobeat: {
+    name: "Afrobeat  ·  106 BPM", bpm: 106, bars: 8,
+    kick:[0,6,10], clap:[8], ohat:[14], chat:[2,4,10,12],
+    chords:[33,33,38,36],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([0,3,6,10,13].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch),0.16);
+      if(step16%4===0) synthLead(ctx,master,t,midiToFreq(ch+24),0.2,"triangle",0.06);
+    }
+  },
+  garage: {
+    name: "UK Garage  ·  134 BPM", bpm: 134, bars: 8,
+    kick:[0,10], clap:[4,12], ohat:[6], chat:[2,5,8,11,14],
+    chords:[45,52,50,48],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([0,6,10].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch-12),0.16);
+      if(step16===0 || step16===8) synthLead(ctx,master,t,midiToFreq(ch+12),0.25,"square",0.06);
+    }
+  },
+  hardstyle: {
+    name: "Hardstyle  ·  150 BPM", bpm: 150, bars: 8,
+    kick:[0,4,8,12], clap:[4,12], ohat:[], chat:[2,6,10,14],
+    chords:[40,40,45,43],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([2,6,10,14].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch-12),0.12);
+      if(step16===0) synthChord(ctx,master,t,ch+12,0.4,0.08,22);
+    }
   }
 };
 
@@ -1579,6 +1630,53 @@ async function init(){
   document.getElementById("helpBtn").addEventListener("click", ()=>tutorial.classList.add("show"));
   document.getElementById("tutClose").addEventListener("click", ()=>tutorial.classList.remove("show"));
   tutorial.addEventListener("click", e=>{ if(e.target===tutorial) tutorial.classList.remove("show"); });
+
+  // Personalización: nombre de DJ y tema de color
+  const THEMES=[
+    {id:"neon", name:"Neón",  a:"#ff3d7f", b:"#21d4fd", accent:"#b06bff"},
+    {id:"fuego", name:"Fuego", a:"#ff5c33", b:"#ffb02e", accent:"#ff3d7f"},
+    {id:"bosque",name:"Bosque",a:"#2fe6a0", b:"#21d4fd", accent:"#7cff6b"},
+    {id:"hielo", name:"Hielo", a:"#7aa2ff", b:"#56e0ff", accent:"#b06bff"},
+    {id:"retro", name:"Retro", a:"#ff7ab0", b:"#9b6bff", accent:"#ffcf3a"},
+    {id:"oro",   name:"Oro",   a:"#ffcf3a", b:"#ff7a3a", accent:"#ffe08a"}
+  ];
+  const custom={ name:"NEON DJ", theme:"neon" };
+  const djnameEl=document.getElementById("djname");
+  const djnameInput=document.getElementById("djnameInput");
+  const themesEl=document.getElementById("themes");
+  function applyTheme(id){
+    const th=THEMES.find(t=>t.id===id)||THEMES[0];
+    const r=document.documentElement.style;
+    r.setProperty("--a", th.a); r.setProperty("--b", th.b); r.setProperty("--accent", th.accent);
+    custom.theme=th.id;
+    Array.from(themesEl.children).forEach(c=>c.classList.toggle("sel", c.dataset.theme===th.id));
+    [deckA,deckB].forEach(d=>d&&d.draw());
+  }
+  function applyName(n){
+    custom.name = (n&&n.trim()) ? n.trim() : "NEON DJ";
+    djnameEl.textContent = custom.name;
+    document.title = custom.name + " · Mesa de mezclas";
+  }
+  function saveCustom(){ try{ localStorage.setItem("neondj_custom", JSON.stringify(custom)); }catch(e){} }
+  THEMES.forEach(th=>{
+    const s=document.createElement("div");
+    s.className="theme-swatch"; s.dataset.theme=th.id; s.textContent=th.name;
+    s.style.background="linear-gradient(135deg,"+th.a+","+th.b+")";
+    s.addEventListener("click", ()=>{ applyTheme(th.id); saveCustom(); });
+    themesEl.appendChild(s);
+  });
+  djnameInput.addEventListener("input", ()=>{ applyName(djnameInput.value); saveCustom(); });
+  const setModal=document.getElementById("settings");
+  document.getElementById("setBtn").addEventListener("click", ()=>setModal.classList.add("show"));
+  document.getElementById("setClose").addEventListener("click", ()=>setModal.classList.remove("show"));
+  setModal.addEventListener("click", e=>{ if(e.target===setModal) setModal.classList.remove("show"); });
+  // cargar personalización guardada
+  try{
+    const saved=JSON.parse(localStorage.getItem("neondj_custom"));
+    if(saved){ applyName(saved.name); djnameInput.value = saved.name==="NEON DJ"?"":saved.name; applyTheme(saved.theme); }
+    else { applyTheme("neon"); }
+  }catch(e){ applyTheme("neon"); }
+
   // Mostrarlo automáticamente solo la primera vez
   try{
     if(!localStorage.getItem("neondj_seen")){ tutorial.classList.add("show"); localStorage.setItem("neondj_seen","1"); }
@@ -1622,7 +1720,7 @@ function loopAnim(){
       if(d.isPlaying && d.baseBPM){
         const beat=60/d.baseBPM, ph=(d.position()%beat)/beat;
         if(ph<0.12){
-          const col = d.color==="a" ? "#ff3d7f" : "#21d4fd";
+          const col = (getComputedStyle(document.documentElement).getPropertyValue(d.color==="a"?"--a":"--b")||"#fff").trim();
           d.el.beatled.style.background = col;
           d.el.beatled.style.boxShadow = "0 0 10px "+col;
         } else {
