@@ -64,6 +64,39 @@
   .auto-btn { color: #b9f5d8; border-color: #2a5a45; background: #16271f; }
   .auto-btn:hover { background: #1d3329; }
   .auto-btn.on { background: var(--good); color: #06120c; border-color: var(--good); animation: recblink 1.2s infinite; }
+  .help-btn { color: #cfe3ff; border-color: #2a4566; background: #16202e; }
+  .help-btn:hover { background: #1d2c40; }
+  .set-btn { color: #cdd6ea; }
+  .seq-open-btn { color: #ffd9a8; border-color: #5a4326; background: #2a2116; }
+  .seq-open-btn:hover { background: #33291c; }
+  .seq-bpm { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 6px 0 12px; }
+  .seq-bpm input { flex: 1; accent-color: var(--accent); }
+  .seq-grid { display: flex; flex-direction: column; gap: 6px; }
+  .seq-row { display: flex; align-items: center; gap: 6px; }
+  .seq-row .lbl { width: 58px; font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+  .seq-cells { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; flex: 1; }
+  .seq-cell { height: 26px; border-radius: 5px; background: #1b2130; border: 1px solid #2a3142; cursor: pointer; transition: .08s; }
+  .seq-cell.beat { background: #222b3d; }
+  .seq-cell.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .seq-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .seq-btn { background: #2a3346; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-weight: 700; cursor: pointer; font-size: 12px; }
+  .seq-btn:hover { background: #3a4361; }
+  .txt-input { width: 100%; background: #0e121b; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+  .themes { display: flex; flex-wrap: wrap; gap: 10px; }
+  .theme-swatch { width: 64px; height: 40px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #fff; font-weight: 700; padding-bottom: 3px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .theme-swatch.sel { border-color: #fff; }
+
+  /* ---- ventana de tutorial ---- */
+  .modal { position: fixed; inset: 0; background: rgba(6,7,11,.82); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  .modal.show { display: flex; }
+  .modal-box { background: linear-gradient(160deg, var(--panel), #0f131d); border: 1px solid var(--line); border-radius: 16px; max-width: 700px; width: 100%; max-height: 86vh; overflow: auto; padding: 22px 26px; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+  .modal-box h2 { margin: 0 0 6px; font-size: 20px; background: linear-gradient(90deg, var(--a), var(--accent), var(--b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .modal-box h3 { font-size: 14px; color: var(--text); margin: 18px 0 6px; }
+  .modal-box p, .modal-box li { font-size: 13px; color: #aeb8cf; line-height: 1.6; }
+  .modal-box ol, .modal-box ul { margin: 6px 0; padding-left: 20px; }
+  .modal-box .close { float: right; background: #2a3346; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+  .modal-box .close:hover { background: #3a4361; }
+  .modal-box kbd { background: #0e121b; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--text); font-size: 12px; }
 
   .console {
     display: grid;
@@ -240,15 +273,82 @@
     <div style="font-size:12px;color:#79839a" id="loadtxt">Sintetizando ritmos</div>
   </div>
 
+  <div class="modal" id="seq">
+    <div class="modal-box">
+      <button class="close" id="seqClose">✕ Cerrar</button>
+      <h2>🥁 Crea tu ritmo</h2>
+      <p>Pulsa las casillas para activar sonidos en cada paso (16 pasos = 1 compás). Luego cárgalo en un plato y mézclalo.</p>
+      <div class="seq-bpm">BPM <input type="range" id="seqBpm" min="70" max="180" value="120" /> <span id="seqBpmVal">120</span></div>
+      <div id="seqGrid" class="seq-grid"></div>
+      <div class="seq-actions">
+        <button id="seqPreview" class="seq-btn">▶ Probar en A</button>
+        <button id="seqToA" class="seq-btn">Cargar en Deck A</button>
+        <button id="seqToB" class="seq-btn">Cargar en Deck B</button>
+        <button id="seqClear" class="seq-btn">Borrar todo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="settings">
+    <div class="modal-box">
+      <button class="close" id="setClose">✕ Cerrar</button>
+      <h2>⚙️ Personaliza tu mesa</h2>
+
+      <h3>Tu nombre de DJ</h3>
+      <input type="text" id="djnameInput" class="txt-input" maxlength="18" placeholder="NEON DJ" />
+
+      <h3>Tema de color</h3>
+      <div class="themes" id="themes"></div>
+
+      <p style="margin-top:16px;color:#79839a">Se guarda solo: la próxima vez que abras la app seguirá igual.</p>
+    </div>
+  </div>
+
+  <div class="modal" id="tutorial">
+    <div class="modal-box">
+      <button class="close" id="tutClose">✕ Cerrar</button>
+      <h2>🎧 Cómo usar tu mesa de DJ</h2>
+      <p>Tienes dos "platos" (A y B). La idea es hacer sonar uno y pasar poco a poco al otro. ¡Vamos!</p>
+
+      <h3>Tu primera mezcla (paso a paso)</h3>
+      <ol>
+        <li>En el <b>Deck A</b> elige un estilo en el desplegable y pulsa <b>PLAY</b>.</li>
+        <li>En el <b>Deck B</b> elige otro estilo y pulsa <b>SYNC</b> (cuadra el ritmo con el A).</li>
+        <li>Pulsa <b>PLAY</b> en el B y mueve el <b>CROSSFADER</b> del centro poco a poco hacia la derecha. ¡Eso es mezclar!</li>
+        <li>Para practicar sin esfuerzo, prueba el botón <b>🤖 AUTO MIX</b>: mezcla solo.</li>
+      </ol>
+
+      <h3>Los controles</h3>
+      <ul>
+        <li><b>Knobs</b> (gira con el ratón): AGUDOS / MEDIOS / GRAVES (EQ), FILTRO, ECO y REVERB. Doble clic = reset.</li>
+        <li><b>PITCH</b>: acelera o frena la canción. <b>LOOP 4</b>: repite 4 tiempos. <b>CUE</b>: vuelve al inicio.</li>
+        <li><b>HOT 1/2/3</b>: el 1er clic guarda un punto; los siguientes saltan a él.</li>
+        <li>Arrastra el <b>vinilo</b> con el ratón para hacer <b>scratch</b>.</li>
+        <li><b>FX</b> (abajo): Riser, Airhorn, Impact, Zap, Flanger, Tape Stop y Echo.</li>
+        <li><b>● REC</b>: graba tu mezcla y la descarga (MP3). La <b>lucecita</b> junto al BPM marca el ritmo.</li>
+      </ul>
+
+      <h3>Atajos de teclado</h3>
+      <p>Deck A: <kbd>Q</kbd> play · <kbd>A</kbd> cue · <kbd>Z</kbd> loop · <kbd>S</kbd> sync &nbsp;|&nbsp;
+      Deck B: <kbd>P</kbd> play · <kbd>L</kbd> cue · <kbd>M</kbd> loop · <kbd>K</kbd> sync<br>
+      <kbd>←</kbd>/<kbd>→</kbd> crossfader &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>7</kbd> efectos</p>
+
+      <p style="margin-top:16px;color:#79839a">Pulsa <b>❓ AYUDA</b> arriba cuando quieras volver a ver esto. Con <b>🥁 RITMO</b> puedes crear tu propio beat, y con <b>⚙️</b> poner tu nombre de DJ y el color.</p>
+    </div>
+  </div>
+
   <header>
     <div class="logo">
       <div class="dot"></div>
       <div>
-        <h1>NEON DJ</h1>
+        <h1 id="djname">NEON DJ</h1>
         <span>MESA DE MEZCLAS</span>
       </div>
     </div>
     <div class="master-strip">
+      <button id="seqBtn" class="rec-btn seq-open-btn">🥁 RITMO</button>
+      <button id="setBtn" class="rec-btn set-btn">⚙️</button>
+      <button id="helpBtn" class="rec-btn help-btn">❓ AYUDA</button>
       <button id="autoBtn" class="rec-btn auto-btn">🤖 AUTO MIX</button>
       <button id="recBtn" class="rec-btn">● REC</button>
       <div class="mlabel">Volumen general</div>
@@ -884,6 +984,56 @@ const TRACKS = {
       if(step16===0) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,5);
       if(step16===8) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,8);
     }
+  },
+  lofi: {
+    name: "Lo-Fi  ·  78 BPM", bpm: 78, bars: 8,
+    kick:[0,10], clap:[4,12], ohat:[], chat:[2,6,10,14],
+    chords:[33,40,35,38],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if(step16===0 || step16===8) synthBass(ctx,master,t,midiToFreq(ch-12),0.3);
+      if(step16===0){ [0,3,7,10].forEach(n=>synthLead(ctx,master,t,midiToFreq(ch+12+n),0.85,"triangle",0.04)); }
+    }
+  },
+  drumstep: {
+    name: "Drumstep  ·  140 BPM", bpm: 140, bars: 8,
+    kick:[0,7,10], clap:[8], ohat:[], chat:[2,4,6,12,14],
+    bassRoots:[21,21,26,24],
+    build(ctx, master, noise, bar, step16, t){
+      const root=this.bassRoots[Math.floor(bar/2)%4];
+      if(step16===0) synthBass(ctx,master,t,midiToFreq(root),0.6);
+      if(step16===8) synthWobble(ctx,master,t,midiToFreq(root),(60/this.bpm)*2,6);
+    }
+  },
+  afrobeat: {
+    name: "Afrobeat  ·  106 BPM", bpm: 106, bars: 8,
+    kick:[0,6,10], clap:[8], ohat:[14], chat:[2,4,10,12],
+    chords:[33,33,38,36],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([0,3,6,10,13].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch),0.16);
+      if(step16%4===0) synthLead(ctx,master,t,midiToFreq(ch+24),0.2,"triangle",0.06);
+    }
+  },
+  garage: {
+    name: "UK Garage  ·  134 BPM", bpm: 134, bars: 8,
+    kick:[0,10], clap:[4,12], ohat:[6], chat:[2,5,8,11,14],
+    chords:[45,52,50,48],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([0,6,10].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch-12),0.16);
+      if(step16===0 || step16===8) synthLead(ctx,master,t,midiToFreq(ch+12),0.25,"square",0.06);
+    }
+  },
+  hardstyle: {
+    name: "Hardstyle  ·  150 BPM", bpm: 150, bars: 8,
+    kick:[0,4,8,12], clap:[4,12], ohat:[], chat:[2,6,10,14],
+    chords:[40,40,45,43],
+    build(ctx, master, noise, bar, step16, t){
+      const ch=this.chords[Math.floor(bar/2)%4];
+      if([2,6,10,14].includes(step16)) synthBass(ctx,master,t,midiToFreq(ch-12),0.12);
+      if(step16===0) synthChord(ctx,master,t,ch+12,0.4,0.08,22);
+    }
   }
 };
 
@@ -911,6 +1061,24 @@ async function generateTrack(def){
   rendered._bpm = def.bpm;               // guardamos el BPM real del loop
   rendered._loop = true;
   return rendered;
+}
+
+/* Convierte un patrón del secuenciador en un buffer reproducible y en bucle */
+async function renderUserBeat(bpm, pat, bars){
+  bars = bars || 4;
+  const sr=44100, beat=60/bpm, stepDur=beat/4, totalSteps=bars*16;
+  const len=Math.ceil(totalSteps*stepDur*sr);
+  const ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2, len, sr);
+  const noise=makeNoise(ctx,1.5);
+  const master=ctx.createGain(); master.gain.value=0.85; master.connect(ctx.destination);
+  for(let step=0; step<totalSteps; step++){
+    const t=step*stepDur, s=step%16;
+    if(pat.kick[s]) synthKick(ctx, master, t);
+    if(pat.snare[s]) synthClap(ctx, noise, master, t);
+    if(pat.hat[s]) synthHat(ctx, noise, master, t, false);
+    if(pat.bass[s]) synthBass(ctx, master, t, midiToFreq(33), 0.16);
+  }
+  const r=await ctx.startRendering(); r._bpm=bpm; r._loop=true; return r;
 }
 
 /* Detección sencilla de BPM para canciones cargadas por el usuario */
@@ -1506,6 +1674,113 @@ async function init(){
   setInterval(saveSettings, 3000);
   window.addEventListener("beforeunload", saveSettings);
 
+  // Secuenciador: crea tu propio ritmo
+  const SEQ_ROWS=[{key:"kick",name:"Bombo"},{key:"snare",name:"Caja"},{key:"hat",name:"Hi-Hat"},{key:"bass",name:"Bajo"}];
+  const pattern={
+    kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+    snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],
+    bass:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]
+  };
+  let seqBPM=120;
+  const seqGrid=document.getElementById("seqGrid");
+  const seqCells={};
+  SEQ_ROWS.forEach(row=>{
+    const r=document.createElement("div"); r.className="seq-row";
+    const lbl=document.createElement("div"); lbl.className="lbl"; lbl.textContent=row.name; r.appendChild(lbl);
+    const cells=document.createElement("div"); cells.className="seq-cells";
+    seqCells[row.key]=[];
+    for(let i=0;i<16;i++){
+      const c=document.createElement("div");
+      c.className="seq-cell"+((i%4===0)?" beat":"")+(pattern[row.key][i]?" on":"");
+      c.addEventListener("click", ()=>{ pattern[row.key][i]=pattern[row.key][i]?0:1; c.classList.toggle("on"); saveBeat(); });
+      cells.appendChild(c); seqCells[row.key].push(c);
+    }
+    r.appendChild(cells); seqGrid.appendChild(r);
+  });
+  function refreshGrid(){ SEQ_ROWS.forEach(row=>seqCells[row.key].forEach((c,i)=>c.classList.toggle("on",!!pattern[row.key][i]))); }
+  function saveBeat(){ try{ localStorage.setItem("neondj_beat", JSON.stringify({bpm:seqBPM,pat:pattern})); }catch(e){} }
+  const seqBpm=document.getElementById("seqBpm"), seqBpmVal=document.getElementById("seqBpmVal");
+  seqBpm.addEventListener("input", ()=>{ seqBPM=+seqBpm.value; seqBpmVal.textContent=seqBPM; saveBeat(); });
+  async function loadBeat(deck, play){
+    const buf=await renderUserBeat(seqBPM, pattern);
+    deck.el.select.value="";
+    deck.loadBuffer(buf, "Mi Ritmo · "+seqBPM+" BPM", seqBPM);
+    if(play){ AC().resume(); deck.play(); }
+  }
+  document.getElementById("seqPreview").addEventListener("click", ()=>loadBeat(deckA, true));
+  document.getElementById("seqToA").addEventListener("click", ()=>loadBeat(deckA, false));
+  document.getElementById("seqToB").addEventListener("click", ()=>loadBeat(deckB, false));
+  document.getElementById("seqClear").addEventListener("click", ()=>{
+    SEQ_ROWS.forEach(row=>{ for(let i=0;i<16;i++) pattern[row.key][i]=0; });
+    refreshGrid(); saveBeat();
+  });
+  const seqModal=document.getElementById("seq");
+  document.getElementById("seqBtn").addEventListener("click", ()=>seqModal.classList.add("show"));
+  document.getElementById("seqClose").addEventListener("click", ()=>seqModal.classList.remove("show"));
+  seqModal.addEventListener("click", e=>{ if(e.target===seqModal) seqModal.classList.remove("show"); });
+  try{
+    const sb=JSON.parse(localStorage.getItem("neondj_beat"));
+    if(sb && sb.pat){ Object.keys(pattern).forEach(k=>{ if(sb.pat[k]) pattern[k]=sb.pat[k]; }); seqBPM=sb.bpm||120; seqBpm.value=seqBPM; seqBpmVal.textContent=seqBPM; refreshGrid(); }
+  }catch(e){}
+
+  // Tutorial dentro de la app
+  const tutorial=document.getElementById("tutorial");
+  document.getElementById("helpBtn").addEventListener("click", ()=>tutorial.classList.add("show"));
+  document.getElementById("tutClose").addEventListener("click", ()=>tutorial.classList.remove("show"));
+  tutorial.addEventListener("click", e=>{ if(e.target===tutorial) tutorial.classList.remove("show"); });
+
+  // Personalización: nombre de DJ y tema de color
+  const THEMES=[
+    {id:"neon", name:"Neón",  a:"#ff3d7f", b:"#21d4fd", accent:"#b06bff"},
+    {id:"fuego", name:"Fuego", a:"#ff5c33", b:"#ffb02e", accent:"#ff3d7f"},
+    {id:"bosque",name:"Bosque",a:"#2fe6a0", b:"#21d4fd", accent:"#7cff6b"},
+    {id:"hielo", name:"Hielo", a:"#7aa2ff", b:"#56e0ff", accent:"#b06bff"},
+    {id:"retro", name:"Retro", a:"#ff7ab0", b:"#9b6bff", accent:"#ffcf3a"},
+    {id:"oro",   name:"Oro",   a:"#ffcf3a", b:"#ff7a3a", accent:"#ffe08a"}
+  ];
+  const custom={ name:"NEON DJ", theme:"neon" };
+  const djnameEl=document.getElementById("djname");
+  const djnameInput=document.getElementById("djnameInput");
+  const themesEl=document.getElementById("themes");
+  function applyTheme(id){
+    const th=THEMES.find(t=>t.id===id)||THEMES[0];
+    const r=document.documentElement.style;
+    r.setProperty("--a", th.a); r.setProperty("--b", th.b); r.setProperty("--accent", th.accent);
+    custom.theme=th.id;
+    Array.from(themesEl.children).forEach(c=>c.classList.toggle("sel", c.dataset.theme===th.id));
+    [deckA,deckB].forEach(d=>d&&d.draw());
+  }
+  function applyName(n){
+    custom.name = (n&&n.trim()) ? n.trim() : "NEON DJ";
+    djnameEl.textContent = custom.name;
+    document.title = custom.name + " · Mesa de mezclas";
+  }
+  function saveCustom(){ try{ localStorage.setItem("neondj_custom", JSON.stringify(custom)); }catch(e){} }
+  THEMES.forEach(th=>{
+    const s=document.createElement("div");
+    s.className="theme-swatch"; s.dataset.theme=th.id; s.textContent=th.name;
+    s.style.background="linear-gradient(135deg,"+th.a+","+th.b+")";
+    s.addEventListener("click", ()=>{ applyTheme(th.id); saveCustom(); });
+    themesEl.appendChild(s);
+  });
+  djnameInput.addEventListener("input", ()=>{ applyName(djnameInput.value); saveCustom(); });
+  const setModal=document.getElementById("settings");
+  document.getElementById("setBtn").addEventListener("click", ()=>setModal.classList.add("show"));
+  document.getElementById("setClose").addEventListener("click", ()=>setModal.classList.remove("show"));
+  setModal.addEventListener("click", e=>{ if(e.target===setModal) setModal.classList.remove("show"); });
+  // cargar personalización guardada
+  try{
+    const saved=JSON.parse(localStorage.getItem("neondj_custom"));
+    if(saved){ applyName(saved.name); djnameInput.value = saved.name==="NEON DJ"?"":saved.name; applyTheme(saved.theme); }
+    else { applyTheme("neon"); }
+  }catch(e){ applyTheme("neon"); }
+
+  // Mostrarlo automáticamente solo la primera vez
+  try{
+    if(!localStorage.getItem("neondj_seen")){ tutorial.classList.add("show"); localStorage.setItem("neondj_seen","1"); }
+  }catch(e){}
+
   document.getElementById("loading").style.display="none";
 
   // Atajos de teclado estilo software DJ
@@ -1544,7 +1819,7 @@ function loopAnim(){
       if(d.isPlaying && d.baseBPM){
         const beat=60/d.baseBPM, ph=(d.position()%beat)/beat;
         if(ph<0.12){
-          const col = d.color==="a" ? "#ff3d7f" : "#21d4fd";
+          const col = (getComputedStyle(document.documentElement).getPropertyValue(d.color==="a"?"--a":"--b")||"#fff").trim();
           d.el.beatled.style.background = col;
           d.el.beatled.style.boxShadow = "0 0 10px "+col;
         } else {
